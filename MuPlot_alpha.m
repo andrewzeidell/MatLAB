@@ -174,32 +174,30 @@ nums = [];
 for a=1:i
     cd(handles.PathName) %makes current directory the one containing the files
     if i==1
-        [material, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper([handles.PathName handles.cellname]);
-%         fileID = fopen(handles.cellname);
+        fileID = fopen(handles.cellname);
         current_file=handles.cellname;
     else
-        [material, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper([handles.PathName handles.cellname{a}]);
-%         fileID = fopen(handles.cellname{a});
+        fileID = fopen(handles.cellname{a});
         current_file=handles.cellname{a};
     end
     
     %Pull the material, dielectric thickness, sample index, length, and
     %width of the sample from the .txt file
-%     materialcell = textscan(fileID,'%s %s',1,'HeaderLines',3,'delimiter','\t');
-%     material = materialcell{2}; %eg diF-TES ADT
-%     dielectriccell = textscan(fileID,'%s %s',1,'HeaderLines',4,'delimiter','\t');
-%     dcell = dielectriccell{2};
-%     %d = str2double(dcell{1}(1:3))*10^-9; %dielectric thickness in m
-%     d = 200*10^-9;
-%     indexcell = textscan(fileID,'%s %s %s',1,'HeaderLines',4,'delimiter','\t');
-%     index = indexcell{2};
-%     %     update the device name in the gui
+    materialcell = textscan(fileID,'%s %s',1,'HeaderLines',3,'delimiter','\t');
+    material = materialcell{2}; %eg diF-TES ADT
+    dielectriccell = textscan(fileID,'%s %s',1,'HeaderLines',4,'delimiter','\t');
+    dcell = dielectriccell{2};
+    %d = str2double(dcell{1}(1:3))*10^-9; %dielectric thickness in m
+    d = 200*10^-9;
+    indexcell = textscan(fileID,'%s %s %s',1,'HeaderLines',4,'delimiter','\t');
+    index = indexcell{2};
+    %     update the device name in the gui
     set(handles.device_location_display_string,'String',index);
     set(handles.current_file_box,'String',current_file);
-%     lengthcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
-%     widthcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
-    set(handles.customlengthbox,'String',dlength);
-    set(handles.customwidthbox,'String',dwidth);
+    lengthcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
+    widthcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
+    set(handles.customlengthbox,'String',lengthcell{2});
+    set(handles.customwidthbox,'String',widthcell{2});
     if get(handles.defaultlengthwidthcheckbox,'Value') == 0
         cd(handles.rootdir)
         menu('Set Custom length and Width before pressing OK','OK');
@@ -223,13 +221,13 @@ for a=1:i
    
 %     W = str2double(widthcell{2})*10^-6;
 %     end
-%     tempcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
-%     T = str2double(tempcell{2});
-%     Vdcell = textscan(fileID,'%s %s %s',1,'HeaderLines',11,'delimiter','\t');
-%     Vd = str2double(Vdcell{3});
+    tempcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
+    T = str2double(tempcell{2});
+    Vdcell = textscan(fileID,'%s %s %s',1,'HeaderLines',11,'delimiter','\t');
+    Vd = str2double(Vdcell{3});
     
     %Variables for Origin--------------------------------------------------
-    WSname = strcat('Mu',index,length,'L',num2str(fileID));
+    WSname = strcat('Mu',index,lengthcell{2},'L',num2str(fileID));
     WSTemplate = strcat(handles.pathdir,'\Device Data WS Template.otw');
     
     %Constant variables: epsr may change later with varying dielectrics -
@@ -239,9 +237,9 @@ for a=1:i
     C_i = epsr*eps0/d; %Capacitance per unit area in F/m^2
     
     %Pull data from superduper---------------------------------------------
-%     datacell = textscan(fileID,'%f %f %f','HeaderLines',2,'delimiter','\t'); %For Super-Duper change to tab delimited
-%     Vg = datacell{1}; %the Gate-Source voltage is column 1
-%     I_D = datacell{3}; %The Drain Current is column 3
+    datacell = textscan(fileID,'%f %f %f','HeaderLines',2,'delimiter','\t'); %For Super-Duper change to tab delimited
+    Vg = datacell{1}; %the Gate-Source voltage is column 1
+    I_D = datacell{3}; %The Drain Current is column 3
     Idlin = abs(I_D);
     sqI_D = sqrt(abs(I_D)); %Take the square-root
     onoffI = abs(min(I_D)/max(I_D)); %on/off current ratio

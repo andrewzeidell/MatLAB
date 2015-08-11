@@ -1,4 +1,4 @@
-function [material, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper(SuperDuperASCIIpath)
+function [material, solvent, conc, method, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper(SuperDuperASCIIpath)
 %Open the file as fileID
 %SuperDuperASCIIpath is the path including the filename
 fileID = fopen(SuperDuperASCIIpath)
@@ -6,7 +6,19 @@ fileID = fopen(SuperDuperASCIIpath)
 %width of the sample from the .txt file
 materialcell = textscan(fileID,'%s %s',1,'HeaderLines',3,'delimiter','\t');
 material = materialcell{2}; %eg diF-TES ADT
-dielectriccell = textscan(fileID,'%s %s',1,'HeaderLines',4,'delimiter','\t');
+%  This reads in the solvent data
+solventcell = textscan(fileID,'%s %s',1,'HeaderLines',1,'delimiter','\t');
+solvent = solventcell{2}; %eg Toluene
+% Concentration
+conccell = textscan(fileID,'%s %s',1,'HeaderLines',1,'delimiter','\t');
+conc = conccell{2}; %eg 1 mM/L
+methcell = textscan(fileID,'%s %s',1,'HeaderLines',1,'delimiter','\t');
+method = methcell{2}; %eg 1 mM/L
+% This reads in the 
+% materialcell = textscan(fileID,'%s %s',1,'HeaderLines',3,'delimiter','\t');
+% material = materialcell{2}; %eg diF-TES ADT
+
+dielectriccell = textscan(fileID,'%s %s',1,'HeaderLines',1,'delimiter','\t');
 dcell = dielectriccell{2};
 d = str2double(dcell{1}(1:3))*10^-9; %dielectric thickness in m
 indexcell = textscan(fileID,'%s %s %s',1,'HeaderLines',4,'delimiter','\t');

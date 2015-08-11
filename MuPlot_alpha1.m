@@ -7,32 +7,6 @@
 %     modify channel widths, and accept or reject data. Outputs to an
 %     Origin template
 %
-% Inputs ([]s are optional)
-%   [string] filePath
-%       Relative or absolute path to the .mpl file, with or without '.mpl'
-%       extension.
-% 
-% Outputs
-%   [1x1 double] numProfiles
-%       An integer indicating the number of profiles read in (up to 60).
-%   [1xN struct] mplMeta
-%       Where N is equal to numProfiles. A struct array containing
-%       information about each profile, corresponding to the columns 
-%   [1x1 double] dataSize
-%       Number of bins of actual lidar signal.
-%   [MxN double] coRaw and crossRaw 
-%       Where M is equal to dataSize, and N is equal to numProfiles.
-%       Contains the raw lidar returns, one profile in each column.
-%   [1x1 double] bgSize
-%       Number of bins of background data.
-%   [MxN double] coBg, crossBg
-%       Where M is equal bgSize, and N is equal to numProfiles.
-%       Contains the raw background signals for co-polarized and
-%       cross-polarized channels, respectively. Each column
-%       corresponds to a column of coRaw and crossRaw, respectively.
-%   [M-2 x 1 double] zvec
-%       Where M is equal to the number of raw datapoints (usually 1299),
-%       thus (M-2) accounts for the 2-bin range & data shift.
 % 
 %
 %
@@ -69,7 +43,7 @@ function varargout = MuPlot(varargin)
 
 % Edit the above text to modify the response to help MuPlot
 
-% Last Modified by GUIDE v2.5 29-Jul-2015 23:00:09
+% Last Modified by GUIDE v2.5 06-Aug-2015 11:24:32
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -100,6 +74,7 @@ function MuPlot_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.rootdir = pwd; %Current Directory
 handles.cellname =0;
 handles.PathName =0;
+handles.keepques=0;
 % handles.pathdir = 'E:\OE Research';
 handles.pathdir = pwd;
 handles.scrsz = get(0,'ScreenSize');
@@ -139,6 +114,7 @@ axes(handles.axes1);
 set(gca,'fontsize',14);
 cla;
 handles.pathdir = get(handles.originpathbox,'String');
+% handles.pathdir = 'Origin Templates';
 guidata(hObject, handles);
 if isequal(handles.cellname,0)|| isequal(handles.PathName,0)
     ques = errordlg('No files chosen, please use File->Open to select files','OK');
@@ -172,13 +148,13 @@ nums = [];
 
 %Loop to complete for each device's data file
 for a=1:i
-%     cd(handles.PathName) %makes current directory the one containing the files
+     cd(handles.rootdir) %makes current directory the one containing the files
     if i==1
-        [material, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper([handles.PathName handles.cellname]);
+        [material, solvent, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper([handles.PathName handles.cellname]);
 %         fileID = fopen(handles.cellname);
         current_file=handles.cellname;
     else
-        [material, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper([handles.PathName handles.cellname{a}]);
+        [material, solvent, d, index, dlength, dwidth, T, Vd, Vg, I_D] = readSuperDuper([handles.PathName handles.cellname{a}]);
 %         fileID = fopen(handles.cellname{a});
         current_file=handles.cellname{a};
     end
@@ -196,6 +172,10 @@ for a=1:i
 %     %     update the device name in the gui
     set(handles.device_location_display_string,'String',index);
     set(handles.current_file_box,'String',current_file);
+       set(handles.diel_thck_box,'String',d);
+          set(handles.material_box,'String',material);
+             set(handles.temperature_box,'String',T);
+    
 %     lengthcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
 %     widthcell = textscan(fileID,'%s %s %s',1,'HeaderLines',1,'delimiter','\t');
     set(handles.customlengthbox,'String',dlength);
@@ -359,12 +339,25 @@ hold on;
     yt = median(sqI_D);
     textmu = strcat('\mu = ',num2str(musat),' cm^2/Vs');
     text(xt,yt,textmu)
-    
-    keepques = menu('Is this usable data?','Yes','No','Pick Pts by Hand');
-    if keepques==2
+handles.keepques=0;    
+guidata(hObject, handles);
+%     keepques = menu('Is this usable data?','Yes','No','Pick Pts by Hand');
+ch = uicontrol('Parent',MuPlot_alpha1,'Position',[120 100 200 40],'String','Yes',...
+              'Callback',@tempch);
+cch = uicontrol('Parent',MuPlot_alpha1,'Position',[120 60 200 40],'String','No',...
+              'Callback',@tempcch);
+ccch = uicontrol('Parent',MuPlot_alpha1,'Position',[120 20 200 40],'String','Pick Pts by Hand',...
+              'Callback',@tempccch);
+         
+    %     ppos = get(MuPlot_alpha1,'Position');
+%     ppos(2) = handles.scrsz(4)/2;
+%     set(keepques,'Position',ppos);
+uiwait(MuPlot_alpha1);
+
+    if handles.keepques==2
 %         close all
         continue
-    elseif keepques==3
+    elseif handles.keepques==3
 %         figure, 
 cla;
         hold on, plot(Vg,sqI_D,'.')
@@ -400,6 +393,9 @@ hold on, plot(Vg,Idlin), plot(Vg(nn:pp),Idlin(nn:pp),'+r');
     text(xtt,ytt,textmu1)
     
     keepques = menu('Is this usable data?','Yes','No','Pick Pts by Hand');
+%     ppos = get(MuPlot_alpha1,'Position');
+%     ppos(2) = handles.scrsz(4)/2;
+%     set(keepques,'Position',ppos);
     if keepques==2
 %         close all
         continue
@@ -433,6 +429,9 @@ hold on, plot(Vg,logI_D), plot(Vg(aa:bb),logI_D(aa:bb),'+r');
     xlabel('V_{GS} (V)')
     ylabel('log(I_D)')
     keepques1 = menu('Is this usable data?','Yes','No','Pick Pts by Hand');
+%     ppos = get(MuPlot_alpha1,'Position');
+%     ppos(2) = handles.scrsz(4)/2;
+%     set(keepques,'Position',ppos);
     if keepques1==2
 %         close all
         continue
@@ -460,13 +459,20 @@ hold on, plot(Vg,logI_D,'.')
     invoke(originObj,'CreatePage',2,strcat(WSname{1}),WSTemplate);
     invoke(originObj,'PutWorksheet',WSname{1},[Vg I_D]);
     %Temp, andrew 07292015
-invoke(originObj, 'Execute', ['plotxy [' WSname{1} ']Sheet1!(1,3) plot:=201 ogl:=[<new template:=XY>]']);
+invoke(originObj, 'Execute', ['plotxy [' WSname{1} ']Sheet1!(1,3) plot:=200 ogl:=[<new template:=XY>]']);
+
 invoke(originObj, 'Execute', 'layadd type:=rightY');
 invoke(originObj, 'Execute', 'layer.y.type = 2');
-invoke(originObj, 'Execute', ['plotxy [' WSname{1} ']Sheet1!(1,4) plot:=201 ogl:=2']);
-invoke(originObj, 'Execute', 'label -yr log(Id)');
-invoke(originObj, 'Execute', 'yr.label.rotate=270');
+invoke(originObj, 'Execute', ['plotxy [' WSname{1} ']Sheet1!(1,4) plot:=200 ogl:=2']);
+invoke(originObj, 'Execute', 'label -yr I\-(D)(A)');
+invoke(originObj, 'Execute', 'label -yl sqrt(I\-(D))(A\+(-1/2))');
+invoke(originObj, 'Execute', 'yr.label.rotate=90');
 invoke(originObj, 'Execute', ['page.longname$ =' WSname{1} 'graph']);
+invoke(originObj, 'Execute', ['win -a ' WSname{1} 'graph']);
+invoke(originObj, 'Execute', 'layer -s 1');
+invoke(originObj, 'Execute', 'Rescale');
+invoke(originObj, 'Execute', 'layer -s 2');
+invoke(originObj, 'Execute', 'Rescale');
     mus = [mus;musat];
     mulins = [mulins;mulin];
     VTsats = [VTsats;VTsat];
@@ -485,7 +491,12 @@ WSTemplatePath = handles.pathdir;
 WSTemplate1 = strcat(WSTemplatePath,'\SingleCrystalData.otw');
 invoke(originObj,'CreatePage',2,'SCData',WSTemplate1);
 invoke(originObj,'PutWorksheet','SCData',data4origin);
-
+invoke(originObj, 'Execute', ['win -o ' WSname{1} 'graph {']);
+invoke(originObj, 'Execute', 'layer -s 1');
+invoke(originObj, 'Execute', 'Rescale');
+invoke(originObj, 'Execute', 'layer -s 2');
+invoke(originObj, 'Execute', 'Rescale');
+invoke(originObj, 'Execute', '}');
 %Message to remind saving------------------------------------------------------
 %fileattrib(OriginPath,'-w');
 ques = warndlg('Save your Project','MATLAB is Finished');
@@ -625,13 +636,13 @@ function choose_originpath_Callback(hObject, eventdata, handles)
 % hObject    handle to choose_originpath (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[InPathName] = uigetdir(get(handles.originpathbox,'String'));
-if InPathName ~= 0
-    %     InPathName = strcat(InPathName,'/');
-    set(handles.originpathbox,'String',[InPathName]);
-    handles.pathdir = InPathName;
-    guidata(hObject, handles);
-end
+% [InPathName] = uigetdir(get(handles.originpathbox,'String'));
+% if InPathName ~= 0
+%     %     InPathName = strcat(InPathName,'/');
+%     set(handles.originpathbox,'String',[InPathName]);
+%     handles.pathdir = InPathName;
+%     guidata(hObject, handles);
+% end
 
 
 % --- Executes on button press in defaultlengthwidthcheckbox.
@@ -697,35 +708,35 @@ function nextbutton_Callback(hObject, eventdata, handles)
 pause off;
 
 
-% --- Executes on button press in pushbutton9.
+% --- Executes on button press in compute_devicedata.
 function pushbutton9_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton9 (see GCBO)
+% hObject    handle to compute_devicedata (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on button press in checkbox3.
+% --- Executes on button press in defaultlengthwidthcheckbox.
 function checkbox3_Callback(hObject, eventdata, handles)
-% hObject    handle to checkbox3 (see GCBO)
+% hObject    handle to defaultlengthwidthcheckbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of checkbox3
+% Hint: get(hObject,'Value') returns toggle state of defaultlengthwidthcheckbox
 
 
 
 function edit7_Callback(hObject, eventdata, handles)
-% hObject    handle to edit7 (see GCBO)
+% hObject    handle to originpathbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of edit7 as text
-%        str2double(get(hObject,'String')) returns contents of edit7 as a double
+% Hints: get(hObject,'String') returns contents of originpathbox as text
+%        str2double(get(hObject,'String')) returns contents of originpathbox as a double
 
 
 % --- Executes during object creation, after setting all properties.
 function edit7_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit7 (see GCBO)
+% hObject    handle to originpathbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -736,26 +747,26 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes on button press in pushbutton8.
+% --- Executes on button press in choose_originpath.
 function pushbutton8_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton8 (see GCBO)
+% hObject    handle to choose_originpath (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
 
 function edit5_Callback(hObject, eventdata, handles)
-% hObject    handle to edit5 (see GCBO)
+% hObject    handle to customlengthbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of edit5 as text
-%        str2double(get(hObject,'String')) returns contents of edit5 as a double
+% Hints: get(hObject,'String') returns contents of customlengthbox as text
+%        str2double(get(hObject,'String')) returns contents of customlengthbox as a double
 
 
 % --- Executes during object creation, after setting all properties.
 function edit5_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit5 (see GCBO)
+% hObject    handle to customlengthbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -768,17 +779,17 @@ end
 
 
 function edit6_Callback(hObject, eventdata, handles)
-% hObject    handle to edit6 (see GCBO)
+% hObject    handle to customwidthbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of edit6 as text
-%        str2double(get(hObject,'String')) returns contents of edit6 as a double
+% Hints: get(hObject,'String') returns contents of customwidthbox as text
+%        str2double(get(hObject,'String')) returns contents of customwidthbox as a double
 
 
 % --- Executes during object creation, after setting all properties.
 function edit6_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit6 (see GCBO)
+% hObject    handle to customwidthbox (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -787,3 +798,35 @@ function edit6_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --------------------------------------------------------------------
+function Help_Callback(hObject, eventdata, handles)
+% hObject    handle to Help (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --------------------------------------------------------------------
+function Directions_Callback(hObject, eventdata, handles)
+% hObject    handle to Directions (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+h = msgbox({'NOTES: Origin folder should be in same directory as GUI, GUI needs the function readSuperDuper.m in the same path' '' '1. Use File->Open to choose Super Duper output files' '2. Set L & W file' '3. Choose whether or not to pull L & W from files'  '4. Click Start to begin' '5. If not using data from files, enter L & W into boxes in info panel' '6. Keep, reject, or choose points for each datatype'},'Directions','help');
+
+ function tempch(hObject,callbackdata)
+   handles.keepques = 1;
+   guidata(hObject, handles);
+   uiresume(gcbf)
+%           end
+function tempcch(hObject,callbackdata)
+   handles.keepques = 2;
+   guidata(hObject, handles);
+   uiresume(gcbf)
+% end
+function tempccch(hObject,callbackdata)
+   handles.keepques = 3;
+   guidata(hObject, handles);
+   uiresume(gcbf)
+   
+% end
